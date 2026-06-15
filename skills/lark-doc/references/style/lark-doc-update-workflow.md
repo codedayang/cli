@@ -1,55 +1,47 @@
-# 改写增强工作流
+# 更新文档操作流程
 
-用户提供已有文档链接或 token，需要改写、润色、补充或重排版时，遵循本工作流。
+用户提供已有文档链接或 token，需要修改、补充、删除或重排内容时，按本流程选择读取范围和更新命令。
 
-## 核心方法论 — Code-Act Loop
-通过自适应的 **Code-Act Loop** 驱动文档改写，而非固定模板式的工作流。每次任务都循环执行：
-1. **Plan（规划）** — 根据用户目标和文档当前状态，评估下一步该做什么
-2. **Execute（执行）** — 运行相应的 `lark-cli docs` 命令，或 **spawn** Agent 子任务并行推进
-3. **Observe（观察）** — 检查命令输出，验证正确性，核查样式是否达标
-4. **Iterate（迭代）** — 如需调整，回到 Plan 继续循环
+## 一、读取范围
 
-## 核心原则：精准手术优于全量覆盖
-1. **精准手术**：只改用户指定的 block，不改其他 block。
-2. **全量覆盖**：如果用户明确要改整篇，才用 `overwrite` 命令。
-3. **保真约束**：改写时原文里的 `<cite type="user">`（@人）、`<cite type="doc">`（@文档）、`<img>`、`<source>`、`<whiteboard>`、`<sheet>`、`<bitable>`、`<synced_reference>` 等行内组件和资源块一律原样保留（含所有 token / user-id / doc-id 属性），不许替换成纯文本姓名、链接或占位符。
+按目标范围选择 `docs +fetch --api-version v2` 的 `--scope`，避免无必要地读取全文：
 
-## 工作流程
+| 目标 | 读取方式 |
+|------|----------|
+| 只改某一节 | `--scope outline --max-depth 2` 找标题，再 `--scope section --start-block-id <标题id> --detail with-ids` |
+| 精确跨节区间 | `--scope range --start-block-id xxx --end-block-id yyy --detail with-ids` |
+| 只知道关键词 | `--scope keyword --keyword xxx --context-before 1 --context-after 1 --detail with-ids` |
+| 明确改整篇 | `--detail with-ids` |
 
-### 第一波 — 分析 + 画板意图识别（串行）
+详见 [`lark-doc-fetch.md`](../lark-doc-fetch.md) 的 `--scope` 说明。
 
-1. **选择读取范围**（节省上下文的关键）：
-   - 用户只改某一节 / 文档较大 → 先 `docs +fetch --api-version v2 --scope outline --max-depth 2` 拿目录，再 `docs +fetch --api-version v2 --scope section --start-block-id <目标标题id> --detail with-ids` 精读该节（`section` 会自动展开到下一个同级/更高级标题前，不用手动算结束 block id）
-   - 需要精确跨节区间 → `docs +fetch --api-version v2 --scope range --start-block-id xxx --end-block-id yyy`（或 `--end-block-id -1` 读到末尾）
-   - 用户只给了模糊关键词 → `docs +fetch --api-version v2 --scope keyword --keyword xxx --context-before 1 --context-after 1 --detail with-ids`
-   - 用户明确要改整篇 → `docs +fetch --api-version v2 --detail with-ids`
-   - 详见 [`lark-doc-fetch.md`](../lark-doc-fetch.md) "意图引导：选择正确的 --scope"
-2. 系统性评估：结构清晰度、富 block 密度（≥40%）、元素多样性（≥3种）、连续 `<p>` 是否超过 3 段、是否有开头 callout 和章节 `<hr/>`
-3. **画板意图识别**：逐章节扫描，按 `lark-doc-style.md`「画板意图识别」表判断哪些段落的信息适合用图表达。重要信息优先画板化，记录需要插图的章节（block ID）、推荐画板类型、mermaid/SVG路径和源内容片段
-4. 向用户简要说明改进计划（包含识别出的画板机会）
+## 二、选择更新命令
 
-### 第二波 — 定向改写（并行 Agent）
+| 目标 | 命令 |
+|------|------|
+| 替换一段普通文本 | `str_replace` |
+| 在指定 block 后插入内容 | `block_insert_after` |
+| 替换指定 block | `block_replace` |
+| 删除指定 block | `block_delete` |
+| 复制已有 block | `block_copy_insert_after` |
+| 移动已有 block | `block_move_after` |
+| 文档末尾追加 | `append` |
+| 全文重建 | `overwrite` |
 
-5. **优先处理第一波识别出的画板候选段落**：
-   参考 [lark-doc-whiteboard.md](../lark-doc-whiteboard.md)中的方式，插入图表画板。
-6. Spawn 内容改写 Agent 在不重叠的章节上并行改进，各 Agent 收到文档 token 和特定 block ID：（见 `lark-doc-style.md`）
-   - 开头适当添加 `<callout>`、重组引言
-   - 纯文本转为 `<grid>`/`<table>`/`<callout>`
-   - 添加低重要度对比分栏、关键提示等富 block；画板类需求只走第 5 步
+优先使用 block 级命令做精确修改。只有用户明确要求完全重建文档时，才使用 `overwrite`。
 
-### 第三波 — 验证（串行）
+## 三、写入内容
 
-7. 获取更新后文档局部内容，重新检查样式指标
-8. 未达标则定向修正，向用户呈现结果
+- XML 内容遵循 [`lark-doc-xml.md`](../lark-doc-xml.md)。
+- Markdown 内容遵循 [`lark-doc-md.md`](../lark-doc-md.md)。
+- 文档元素和文字样式用法见 [`lark-doc-style.md`](lark-doc-style.md)。
+- 禁止使用行内代码块；代码片段使用 XML `<pre><code>...</code></pre>` 或 Markdown fenced code block。
+- 可以使用加粗、下划线、文字颜色、文字背景色等文字样式提升可读性。
 
-## Agent 子任务要求
+改写已有内容时，原文里的 `<cite type="user">`、`<cite type="doc">`、`<img>`、`<source>`、`<whiteboard>`、`<sheet>`、`<bitable>`、`<synced_reference>` 等行内组件和资源块应保留其 token / user-id / doc-id 等属性。不要替换成纯文本姓名、链接或占位符。
 
-内容改写 Agent 必须收到：文档 token、章节范围（标题/block ID）、`lark-doc-xml.md` 和 `lark-doc-style.md` 路径、具体的 `docs +update` command 和 `--block-id`。
+## 四、更新后
 
-Mermaid 图由主 Agent 直接插入 `<whiteboard type="mermaid">...</whiteboard>`，无需 SubAgent。
-
-SVG SubAgent 必须收到：文档 token、插入位置（标题/block ID）、图表目标、源内容片段、`lark-doc-xml.md` 路径，以及[lark-doc-whiteboard.md](../lark-doc-whiteboard.md) 中的 "SVG 设计 Workflow" 指南。它只负责插入一个 `<whiteboard type="svg">...</whiteboard>`，不改其他正文，也不读取 `lark-whiteboard`。
-
-已有画板更新 SubAgent 必须收到：board_token、图表目标、推荐画板类型、源内容片段、[`../../../lark-whiteboard/SKILL.md`](../../../lark-whiteboard/SKILL.md) 路径。它只负责写入画板，不改文档正文。
-
-**上下文节省提示**：Agent 如需在自己负责的章节内重新读取内容，优先用 `docs +fetch --api-version v2 --scope section --start-block-id <章节标题id>`（自动覆盖整节），或 `--scope range --start-block-id xxx --end-block-id yyy` 精确区间，只拉自己的章节，不要重复拉全文。
+1. 如果后续还要继续按 block ID 操作，重新 `docs +fetch --api-version v2 --detail with-ids` 获取最新 block ID。
+2. `block_replace` 后旧 block ID 不保证继续可用。
+3. 新增画板、图片等资源块时，从返回值的 `document.new_blocks` 中读取 `block_id` 和 `block_token`。

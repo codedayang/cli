@@ -3,18 +3,18 @@
 
 > **前置条件（MUST READ）：** 生成文档内容前，必须先用 Read 工具读取以下文件，缺一不可：
 > 1. [`lark-doc-xml.md`](lark-doc-xml.md) — XML 语法规则（使用 Markdown 格式时改读 [`lark-doc-md.md`](lark-doc-md.md)）
-> 2. [`lark-doc-style.md`](style/lark-doc-style.md) — 排版指南（元素选择、丰富度规则、颜色语义）
-> 3. [`lark-doc-update-workflow.md`](style/lark-doc-update-workflow.md) — 改写增强工作流（Code-Act Loop、并行执行策略）
+> 2. [`lark-doc-style.md`](style/lark-doc-style.md) — 文档元素与文字样式用法
+> 3. [`lark-doc-update-workflow.md`](style/lark-doc-update-workflow.md) — 更新文档的操作流程
 >
-> **未读完以上文件就生成内容会导致格式错误或样式不达标。**
+> **未读完以上文件就生成内容会导致格式错误或元素用法错误。**
 
 通过八种指令精确更新飞书云文档。支持字符串级别和 block 级别的操作。
 
 > **⚠️ 格式选择规则：**
-> - **局部精修**（`str_replace` / `block_insert_after` / `block_replace` / `block_delete` / `block_move_after`）：优先使用 XML（默认）。XML 能稳定表达 block 结构和样式，精准编辑更可控；不要因为 Markdown 写起来更简单就自行切换。
+> - **局部精修**（`str_replace` / `block_insert_after` / `block_replace` / `block_delete` / `block_move_after`）：优先使用 XML（默认）。XML 能稳定表达 block 结构和文字样式，精准编辑更可控；不要因为 Markdown 写起来更简单就自行切换。
 > - **整段写入**（`append` / `overwrite`）：XML 和 Markdown 都可以。用户提供 `.md` 本地文件或明确要求 Markdown 时直接用 Markdown；否则默认 XML。
 >
-> **Markdown 局限 & block ID 前提：** Markdown 不携带 block ID，也无样式（颜色、对齐、callout 等）。需要按 block ID 定位（`block_*` 指令的 `--block-id`）时，先 `docs +fetch --api-version v2 --detail with-ids` **配合 `--scope`（`outline` / `range` / `keyword` / `section`）局部获取**目标段落，不要全量 fetch。拿到 block ID 后 `--content` 仍可用 Markdown，只是写入内容不带样式。
+> **Markdown 局限 & block ID 前提：** Markdown 不携带 block ID，也不支持颜色、对齐、callout 等扩展元素。需要按 block ID 定位（`block_*` 指令的 `--block-id`）时，先 `docs +fetch --api-version v2 --detail with-ids` **配合 `--scope`（`outline` / `range` / `keyword` / `section`）局部获取**目标段落，不要全量 fetch。拿到 block ID 后 `--content` 仍可用 Markdown，只是写入内容不带这些扩展元素。
 
 ## 参数
 
@@ -225,7 +225,7 @@ lark-cli docs +update --api-version v2 --doc "<doc_id>" --command str_replace \
 
 > **`docs +update` 不能直接编辑已有画板的内容。** 本命令只能**新增**画板块；要修改已有画板，先用 `docs +fetch --api-version v2` 取到 `<whiteboard token="...">`，再按 [`lark-doc-whiteboard.md`](lark-doc-whiteboard.md) 启动 SubAgent 读取 [`lark-whiteboard`](../../lark-whiteboard/SKILL.md) 并写入。
 
-画板的语法选型与插入示例见 [`lark-doc-style.md`](style/lark-doc-style.md) 的「画板语法与插入」章节。
+画板的语法选型与插入示例见 [`lark-doc-whiteboard.md`](lark-doc-whiteboard.md)。
 
 ## 最佳实践
 
@@ -234,7 +234,8 @@ lark-cli docs +update --api-version v2 --doc "<doc_id>" --command str_replace \
   - **XML 模式（默认）**：`--pattern` 只支持**行内**匹配，不支持跨行 / 跨 block。段落、整块或容器级（列表、表格、分栏、引用块等）改动请改用 `block_replace` 指定 block_id 重建。
   - **Markdown 模式**（`--doc-format markdown`）：`--pattern` 同时支持**行内和跨行**匹配，还支持 `前缀...后缀` 省略号语法（用 `...` 串联首尾片段匹配一大段内容），可以一次替换多行文本；但仍建议优先按最小片段匹配，跨 block 容器级重写仍优先用 `block_replace`，避免副作用。
 - **保护不可重建的内容**：图片、画板、电子表格等以 token 形式存储，替换时避开这些 block
-- **str_replace 的 replacement 支持富文本**：可以用行内标签 `<b>`、`<a>`、`<cite>`、`<latex>` 等替换普通文本为富文本
+- **str_replace 的 replacement 支持富文本**：可以用行内标签 `<b>`、`<u>`、`<span text-color>`、`<span background-color>`、`<a>`、`<cite>`、`<latex>` 等替换普通文本为富文本
+- **禁止行内代码块**：不要用 Markdown 单反引号生成行内代码；XML 的 `<code>` 只能放在 `<pre>` 内作为代码块内容
 - **同一 block 只能被 replace 一次**：多次修改同一 block 请合并为一次 block_replace
 - **block_replace 后重新获取 ID**：`block_replace` 成功后旧 block ID 不保证继续可用；继续做相邻块操作前，重新 `docs +fetch --detail with-ids`
 - **block_delete 支持批量**：用逗号分隔多个 block_id 一次删除
@@ -242,12 +243,11 @@ lark-cli docs +update --api-version v2 --doc "<doc_id>" --command str_replace \
   1. 用 `block_insert_after` 在目标位置插入新的富文本结构
   2. 用 `block_delete` 批量删除旧的 block
   3. 这样可以保留文档中其他不相关的内容（图片、评论等）
-- **视觉丰富度**：插入或替换内容时，同样遵循 [`lark-doc-style.md`](style/lark-doc-style.md) 中的样式指南，主动使用结构化 block
 
 ## 参考
 
-- [`lark-doc-update-workflow.md`](style/lark-doc-update-workflow.md) — 改写增强工作流（Code-Act Loop、并行执行策略）
-- [`lark-doc-style.md`](style/lark-doc-style.md) — 文档样式指南（元素选择 + 丰富度规则 + 颜色语义）
+- [`lark-doc-update-workflow.md`](style/lark-doc-update-workflow.md) — 更新文档的操作流程
+- [`lark-doc-style.md`](style/lark-doc-style.md) — 文档元素与文字样式用法
 - [`lark-doc-xml.md`](lark-doc-xml.md) — XML 语法规范
 - [`lark-doc-fetch.md`](lark-doc-fetch.md) — 获取文档
 - [`lark-doc-create.md`](lark-doc-create.md) — 创建文档

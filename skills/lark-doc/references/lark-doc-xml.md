@@ -1,7 +1,9 @@
 基于 HTML 子集的 XML 格式描述飞书文档内容。
 
 # 一、标准 HTML 标签
-p, h1-h9, ul, ol, li, table, thead, tbody, tr, th, td, blockquote, pre, code, hr, img, b, em, u, del, a, br, span 语义不变
+p, h1-h9, ul, ol, li, table, thead, tbody, tr, th, td, blockquote, pre, code, hr, img, b, em, u, del, a, br, span 语义不变。
+
+`<code>` 只能作为 `<pre>` 的子标签表示代码块内容，禁止作为行内代码或行内样式使用。
 
 # 二、扩展标签速查表
 ## 块级标签
@@ -64,7 +66,8 @@ p, h1-h9, ul, ol, li, table, thead, tbody, tr, th, td, blockquote, pre, code, hr
 # 五、补充规则
 
 ## 富文本样式嵌套顺序
-- 行内样式标签必须按以下固定顺序嵌套（外 → 内），关闭顺序严格反转：`<a> → <b> → <em> → <del> → <u> → <code> → <span> → 文本内容`
+- 行内样式标签必须按以下固定顺序嵌套（外 → 内），关闭顺序严格反转：`<a> → <b> → <em> → <del> → <u> → <span> → 文本内容`
+- 禁止使用行内代码块 / inline code；不要把 `<code>` 放在段落、列表、表格单元格等行内位置。
 
 ## 列表分组
 - 连续同类型列表项自动合并为一个 `<ul>` 或 `<ol>`
@@ -80,6 +83,7 @@ p, h1-h9, ul, ol, li, table, thead, tbody, tr, th, td, blockquote, pre, code, hr
 ## 代码块
 - 代码块必须写成 `<pre lang="xxx" caption="可选说明"><code>代码内容</code></pre>`。
 - 不要将代码文本直接放在 `<pre>` 下；应放在内层 `<code>` 中。
+- `<code>` 只允许用于这种代码块结构，不允许用作行内代码。
 
 
 ## 用户名写入规则
@@ -95,7 +99,8 @@ p, h1-h9, ul, ol, li, table, thead, tbody, tr, th, td, blockquote, pre, code, hr
 - 有表头时第一行在 `<thead>` 用 `<th>`，其余在 `<tbody>` 用 `<td>`
 - 合并单元格仅起始格输出 `colspan` / `rowspan`，被合并的格不出现
 
-# 六、美化系统
+# 六、文字样式和颜色
+- 可以使用 `<b>`、`<u>`、`<em>`、`<del>`、`<span text-color="...">`、`<span background-color="...">` 等文字样式提升可读性。
 - 颜色优先使用命名色，也可写 `rgb(r,g,b)` / `rgba(r,g,b,a)`。**基础色（7 色）**：red, orange, yellow, green, blue, purple, gray
   | 属性 | 支持的命名色 |                                                                                                                                                                                                        
   |-|-|
@@ -128,7 +133,7 @@ p, h1-h9, ul, ol, li, table, thead, tbody, tr, th, td, blockquote, pre, code, hr
 
 <h1>一级标题</h1>
 
-<p><b>加粗文本</b>，<span text-color="green">绿色文本</span></p>
+<p><b>加粗文本</b>，<u>下划线文本</u>，<span text-color="green">绿色文本</span>，<span background-color="light-yellow">带背景文本</span></p>
 
 <callout emoji="💡" background-color="light-yellow" border-color="yellow">
   <p>高亮框内容，子块仅支持文本/标题/列表/待办/引用</p>

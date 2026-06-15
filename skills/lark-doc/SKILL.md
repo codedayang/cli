@@ -26,13 +26,17 @@ lark-cli docs +update --api-version v2 --doc "文档URL或token" --command appen
 **CRITICAL — 执行对应操作前，MUST 先用 Read 工具读取以下文件，缺一不可：**
 1. [`../lark-shared/SKILL.md`](../lark-shared/SKILL.md) — 认证、权限处理、全局参数（所有操作通用）
 2. **读取文档（`docs +fetch --api-version v2`）** → 必读 [`lark-doc-fetch.md`](references/lark-doc-fetch.md)（`--scope` / `--detail` 选择、局部读取策略、`<fragment>` / `<excerpt>` 输出结构）
-3. **创建或编辑文档内容** → 必读 [`lark-doc-xml.md`](references/lark-doc-xml.md)（XML 语法规则，仅当用户明确要求 Markdown 时改读 [`lark-doc-md.md`](references/lark-doc-md.md)）；从零创建时加读 [`lark-doc-create-workflow.md`](references/style/lark-doc-create-workflow.md)；编辑已有文档时加读 [`lark-doc-update-workflow.md`](references/style/lark-doc-update-workflow.md)
+3. **创建或编辑文档内容** → 必读 [`lark-doc-xml.md`](references/lark-doc-xml.md)（XML 语法规则，仅当用户明确要求 Markdown 时改读 [`lark-doc-md.md`](references/lark-doc-md.md)）和 [`lark-doc-style.md`](references/style/lark-doc-style.md)（文档元素与文字样式用法）；从零创建时加读 [`lark-doc-create-workflow.md`](references/style/lark-doc-create-workflow.md)；编辑已有文档时加读 [`lark-doc-update-workflow.md`](references/style/lark-doc-update-workflow.md)
 
-**未读完以上文件就执行相应操作会导致参数选择错误、格式错误或样式不达标。**
+**未读完以上文件就执行相应操作会导致参数选择错误、格式错误或元素用法错误。**
 
 > **格式选择规则（全局）：**
-> - **创建 / 导入场景**（`docs +create`，或 `docs +update --command append/overwrite` 的整段写入）：XML 和 Markdown 都可以。用户提供 `.md` 本地文件、或明确说"导入 Markdown"时，直接用 Markdown；否则默认 XML（可用 callout、grid、checkbox 等富 block）。
-> - **精准编辑场景**（`docs +update` 的 `str_replace` / `block_insert_after` / `block_replace` / `block_delete` / `block_move_after` 等局部精修指令）：优先使用 XML（`--doc-format xml`，即默认值）。XML 能稳定表达 block 结构和样式，局部精修更可控；不要因为 Markdown 更简单就自行切换。
+> - **创建 / 导入场景**（`docs +create`，或 `docs +update --command append/overwrite` 的整段写入）：XML 和 Markdown 都可以。用户提供 `.md` 本地文件、或明确说"导入 Markdown"时，直接用 Markdown；否则默认 XML（可用 callout、grid、checkbox、文字样式等元素）。
+> - **精准编辑场景**（`docs +update` 的 `str_replace` / `block_insert_after` / `block_replace` / `block_delete` / `block_move_after` 等局部精修指令）：优先使用 XML（`--doc-format xml`，即默认值）。XML 能稳定表达 block 结构和文字样式，局部精修更可控；不要因为 Markdown 更简单就自行切换。
+
+> **内容写入规则（全局）：**
+> - **禁止使用行内代码块 / inline code。** Markdown 中不要用单反引号包裹文本；XML 中 `<code>` 只能作为 `<pre>` 的子标签表示代码块，不能作为行内样式使用。
+> - 可以使用文字样式提升可读性，包括 `<b>` 加粗、`<u>` 下划线、`<em>` 斜体、`<del>` 删除线、`<span text-color="...">` 文字颜色和 `<span background-color="...">` 文字背景色。
 
 ## 快速决策
 - 用户需要“某个 block 的直达链接 / 锚点链接”时：返回 `文档基础 URL#block_id`。如果当前只有文档 URL 没有 block_id，先用 `docs +fetch --detail with-ids` 拿到目标 block 的 id
@@ -41,8 +45,8 @@ lark-cli docs +update --api-version v2 --doc "文档URL或token" --command appen
   - 已知 block_id = `blkcn456`
   - 应返回 `https://xxx.feishu.cn/docx/doxcn123#blkcn456`
 - 用户需要在文档内**创建、复制或移动**资源块（画板、电子表格、多维表格等）时，必须先读取 [`lark-doc-xml.md`](references/lark-doc-xml.md) 的「三、资源块」章节
-- 写文档时，重要信息（核心流程、架构、对比、风险、路线图、关键指标、因果关系）优先规划为画板，不要只用文字或表格承载
-- 新增画板必须隔离到 SubAgent：简单图由 SubAgent 直接插入 `<whiteboard type="svg">完整 SVG</whiteboard>`，不读 `lark-whiteboard`；复杂图才由主 Agent 先建 `<whiteboard type="blank"></whiteboard>`，再启动 SubAgent 读取 `lark-whiteboard` 写入
+- 用户需要插入图表、流程图、架构图、对比图、时间线等可视化内容时，可使用 `<whiteboard>`；具体语法和 Mermaid / SVG / 空白画板的选择规则见 [`lark-doc-whiteboard.md`](references/lark-doc-whiteboard.md)
+- 新增 SVG 画板可以由 SubAgent 直接插入 `<whiteboard type="svg">完整 SVG</whiteboard>`，不读 `lark-whiteboard`；需要编辑已有画板或空白复杂画板时，再启动 SubAgent 读取 `lark-whiteboard` 写入
 - 用户说"看一下文档里的图片/附件/素材""预览素材" → 用 `lark-cli docs +media-preview`
 - 用户明确说"下载素材" → 用 `lark-cli docs +media-download`
 - 如果目标是画板/whiteboard/画板缩略图 → 只能用 `lark-cli docs +media-download --type whiteboard`（不要用 `+media-preview`）
